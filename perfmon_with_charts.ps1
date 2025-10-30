@@ -1,5 +1,5 @@
 # ======================================================================================
-# Performance Monitor with Fixed 0-100 Y-axis Charts
+# Performance Monitor with Timestamp X-axis and Fixed 0-100 Y-axis Charts
 # ======================================================================================
 
 # ---------------------------------------------
@@ -119,30 +119,34 @@ function Create-PerformanceGraphs {
 
         # Define chart area
         $area = New-Object System.Windows.Forms.DataVisualization.Charting.ChartArea "MainArea"
-        $area.AxisX.Title = "Sample Index"
+        $area.AxisX.Title = "Timestamp"
         $area.AxisX.TitleFont = "Segoe UI, 11pt"
         $area.AxisY.Title = "Usage (%)"
         $area.AxisY.TitleFont = "Segoe UI, 11pt"
 
-        # X-axis setup
-        $area.AxisX.IsStartedFromZero = $true
-        $area.AxisX.MajorGrid.LineColor = "LightGray"
-        $area.AxisX.Crossing = 0
-        $area.AxisX.LabelStyle.Angle = -45
-        $area.AxisX.IntervalAutoMode = [System.Windows.Forms.DataVisualization.Charting.IntervalAutoMode]::VariableCount
-
-        # Y-axis setup (0-100)
+        # Y-axis setup (0-100 with 10 unit intervals)
         $area.AxisY.Minimum = 0
         $area.AxisY.Maximum = 100
         $area.AxisY.Interval = 10
         $area.AxisY.MajorGrid.LineColor = "LightGray"
         $area.AxisY.IsStartedFromZero = $true
-        $area.AxisY.Crossing = 0
 
-        # Adjust inner area to align with origin
-        $area.InnerPlotPosition.X = 0
-        $area.InnerPlotPosition.Width = 90
-        $area.InnerPlotPosition.Height = 90
+        # X-axis setup for timestamps
+        $area.AxisX.LabelStyle.Angle = -45
+        $area.AxisX.MajorGrid.LineColor = "LightGray"
+        $area.AxisX.IntervalAutoMode = [System.Windows.Forms.DataVisualization.Charting.IntervalAutoMode]::VariableCount
+        $area.AxisX.LabelStyle.Format = "HH:mm:ss"
+        
+        # Position adjustments
+        $area.Position.X = 5
+        $area.Position.Y = 10
+        $area.Position.Width = 90
+        $area.Position.Height = 80
+        
+        $area.InnerPlotPosition.X = 10
+        $area.InnerPlotPosition.Y = 5
+        $area.InnerPlotPosition.Width = 85
+        $area.InnerPlotPosition.Height = 85
 
         $chart.ChartAreas.Add($area)
 
@@ -154,12 +158,17 @@ function Create-PerformanceGraphs {
         $series.MarkerStyle = "Circle"
         $series.MarkerSize = 5
         $series.IsVisibleInLegend = $false
+        $series.XValueType = [System.Windows.Forms.DataVisualization.Charting.ChartValueType]::DateTime
 
-        # Plot points
-        $index = 0
+        # Plot points with timestamps
         foreach ($row in $data) {
-            $series.Points.AddXY($index, [double]$row.$ValueField)
-            $index++
+            try {
+                $timestamp = [DateTime]::ParseExact($row.timestamp, "yyyy-MM-dd HH:mm:ss", $null)
+                $value = [double]$row.$ValueField
+                $series.Points.AddXY($timestamp, $value)
+            } catch {
+                Write-Warning "Skipped invalid data point: $($row.timestamp)"
+            }
         }
 
         $chart.Series.Add($series)
